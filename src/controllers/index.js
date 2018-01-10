@@ -1,3 +1,3 @@
-module.exports.index = (app, req, res) => {
-    res.render('index');
+module.exports.index = (app, req, res, errors) => {
+    res.render('index', errors);
 }
