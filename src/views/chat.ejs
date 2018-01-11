@@ -71,56 +71,14 @@
 		<div class="container">
             <div class="row conversa" id="conversa">
 				<div class="col-md-1"></div>
-				<div class="col-md-10">
-					<div class="dialogo">
-						<h4>Jorge</h4>
-						<p>Fala José, blz cara?</p>
-					</div>
-					
-					<div class="dialogo">
-						<h4>José</h4>
-						<p>Opa, tudo certo!</p>
-					</div>
-					
-					<div class="dialogo">
-						<h4>Jorge</h4>
-						<p>Vai estudar mais sobre NodeJS hoje?</p>
-					</div>
-					
-					<div class="dialogo">
-						<h4>José</h4>
-						<p>Sim, com certeza. Vamos trabalhar com Websockets hoje, o assunto é bem interessante</p>
-					</div>
-					
-					<div class="dialogo">
-						<h4>Jorge</h4>
-						<p>Show de bola, comunicação bi-direcional em páginas ou sistemas web é muito bacana mesmo</p>
-					</div>
-				</div>
+				<div class="col-md-10" id="dialogos"></div>
 				<div class="col-md-1"></div>
-                
             </div>
 			
 			<div class="row participantes" id="participantes" style="display:none">
 				<div class="col-md-1"></div>
-				<div class="col-md-10">
-					<span class="participante">
-						<img src="images/ico_usuario.png" />
-						Jorge
-					</span>
-					
-					<span class="participante">
-						<img src="images/ico_usuario.png" />
-						José
-					</span>
-					
-					<span class="participante">
-						<img src="images/ico_usuario.png" />
-						Fernando
-					</span>
-				</div>
+				<div class="col-md-10" id="pessoas"></div>
 				<div class="col-md-1"></div>
-                
             </div>
         </div>
 		
@@ -130,9 +88,10 @@
 					<form>
 						<div class="col-md-12">
 							<div class="input-group">
-								<input type="text" class="form-control" placeholder="Mensagem">
+								<input type="hidden" name="username" id="username" value="<%= username %>"/>
+								<input type="text" id="mensagem" class="form-control" placeholder="Mensagem">
 								<span class="input-group-btn">
-									<button class="btn btn-default" type="button">></button>
+									<button class="btn btn-default" type="button" id="enviar-mensagem">></button>
 								</span>
 							</div>
 						</div>
@@ -142,6 +101,73 @@
 		</nav>		
 		
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
-		
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			var socket = io('http://localhost:3000');
+
+			function renderMessage(username,message){
+				let html = $('<div>').addClass('dialogo');
+				let labelUsername = $('<h4>', { text : username });
+				let messageParagraph = $('<p>', { text : message });
+				
+				html.append(labelUsername).append(messageParagraph);
+
+				$("#dialogos").append(html);
+
+				window.scrollTo(0, document.body.scrollHeight);
+			}
+
+			function addUserToParticipantsList(username){
+				let participantLogo = $('<img>', { src : "images/ico_usuario.png" });
+				let participantBlock = $('<span>', { text : username })
+				
+				participantBlock.addClass("participante").append(participantLogo);
+
+				$("#pessoas").append(participantBlock);
+			}
+
+			function sendMessage (event){
+				let $message = $("#mensagem");
+				let message = $message.val();
+
+				if( message.length != 0){
+					socket.emit('message-from-user-to-server', { username : $("#username").val() , message : message });
+					$message.val('');
+				}
+			}
+
+			$('#enviar-mensagem').click( sendMessage );
+
+			$("#mensagem").keydown( (event) => {
+				if(event.keyCode == 13){
+					sendMessage();
+				}
+			});
+
+			socket.on('user-connected', ( { username } ) => {
+				renderMessage(username, 'se connectou');
+				addUserToParticipantsList(username);
+			});
+
+			socket.on('message-from-server-to-user', ( { username, message } ) => {
+				renderMessage(username,message);
+			});
+
+			socket.on('load-participants', ( participants ) => {
+				participants.forEach(addUserToParticipantsList);
+			});
+
+			$(document).ready(() => {
+				socket.emit('new-participant', $("#username").val());
+
+				$(window).keydown( (event) => {
+					if(event.keyCode == 13) {
+						event.preventDefault();
+						return false;
+					}
+				});
+			});
+
+		</script>
 	</body>
 </html>
